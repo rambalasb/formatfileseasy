@@ -1,6 +1,7 @@
 import React from 'react';
 import { FileDown, ArrowRight } from 'lucide-react';
-import { ConversionType, SUPPORTED_CONVERSIONS } from '../types/conversion';
+import type { ConversionType } from '../types/conversion';
+import { SUPPORTED_CONVERSIONS } from '../types/conversion';
 
 type ConversionOptionsProps = {
   fileType: string;
