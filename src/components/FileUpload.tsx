@@ -21,7 +21,7 @@ export default function FileUpload({ onFileChange, fileName, dragActive }: FileU
         onChange={onFileChange}
         className="hidden"
         id="fileInput"
-        accept=".txt,.json,.csv,.jpg,.jpeg,.png,.webp"
+        accept=".txt,.json,.csv,.jpg,.jpeg,.png,.pdf,.doc,.docx,.mp4,.mp3"
       />
       <label
         htmlFor="fileInput"
@@ -40,7 +40,7 @@ export default function FileUpload({ onFileChange, fileName, dragActive }: FileU
                 {dragActive ? 'Drop your file here' : 'Click to upload or drag and drop'}
               </span>
               <span className="text-gray-400 text-sm block">
-                Supports TXT, JSON, CSV, JPEG, PNG, WebP
+                Supports TXT, JSON, CSV, JPEG, PNG, PDF, DOC, DOCX, MP4, MP3
               </span>
             </div>
           </>

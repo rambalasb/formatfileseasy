@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { ConversionType } from '../types/conversion';
 import { convertFile } from '../utils/fileConversion';
 import FileUpload from './FileUpload';
@@ -6,14 +6,18 @@ import ConversionOptions from './ConversionOptions';
 import StatusMessage from './StatusMessage';
 import SupportedFormats from './SupportedFormats';
 import { FileType, Settings2 } from 'lucide-react';
+import { FileConverter } from '../utils/converters';
+import ProgressBar from './ProgressBar';
 
 export default function FileConverter() {
   const [file, setFile] = useState<File | null>(null);
-  const [convertedData, setConvertedData] = useState<string | null>(null);
+  const [convertedData, setConvertedData] = useState<Blob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [conversion, setConversion] = useState<ConversionType | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [progress, setProgress] = useState<number>(0);
+  const workerRef = useRef<Worker | null>(null);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -50,21 +54,57 @@ export default function FileConverter() {
     }
   };
 
-  const handleConvert = async () => {
+  const handleConvert = useCallback(async () => {
     if (!file || !conversion) return;
-    
-    setLoading(true);
-    setError(null);
-    
+
     try {
-      const result = await convertFile(file, conversion.from, conversion.to);
-      setConvertedData(result);
+      setLoading(true);
+      setError(null);
+      setProgress(0);
+
+      if (!workerRef.current) {
+        workerRef.current = new Worker(
+          new URL('../workers/conversionWorker.ts', import.meta.url),
+          { type: 'module' }
+        );
+      }
+
+      const worker = workerRef.current;
+      const conversionId = Date.now().toString();
+
+      return new Promise((resolve, reject) => {
+        worker.onmessage = (e) => {
+          const { type, progress, result, error, id } = e.data;
+          if (id !== conversionId) return;
+
+          switch (type) {
+            case 'progress':
+              setProgress(progress);
+              break;
+            case 'complete':
+              setConvertedData(result);
+              resolve(result);
+              break;
+            case 'error':
+              reject(new Error(error));
+              break;
+          }
+        };
+
+        worker.postMessage({
+          file,
+          fromType: conversion.from,
+          toType: conversion.to,
+          id: conversionId
+        });
+      });
+
     } catch (err) {
-      setError((err as Error).message);
+      setError(err instanceof Error ? err.message : 'Conversion failed');
     } finally {
       setLoading(false);
     }
-  };
+  }, [file, conversion]);
 
   const handleDownload = () => {
     if (!convertedData || !conversion) return;
@@ -113,6 +153,13 @@ export default function FileConverter() {
                 onConversionChange={setConversion}
                 onConvert={handleConvert}
                 loading={loading}
+              />
+            )}
+
+            {loading && (
+              <ProgressBar 
+                progress={progress}
+                status={`Converting ${file?.name}...`}
               />
             )}
 
